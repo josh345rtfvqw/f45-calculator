@@ -1,0 +1,123 @@
+/* F45 Playoffs Score Calculator — page-specific styles.
+   Builds on the shared tokens in /style.css */
+
+.f45-form { display: flex; flex-direction: column; }
+
+.f45-row {
+  display: grid;
+  grid-template-columns: 1fr 7rem;
+  align-items: center;
+  gap: 0.15rem 1.25rem;
+  padding: 0.95rem 0;
+  border-top: 1px solid var(--sheet-line);
+}
+.f45-row:first-child { border-top: 0; padding-top: 0; }
+
+.f45-row label {
+  grid-column: 1;
+  font-weight: 600;
+  color: var(--headline);
+  line-height: 1.3;
+}
+.f45-row .target {
+  grid-column: 1;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+.f45-row input {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--headline);
+  background: color-mix(in srgb, var(--sheet-line) 22%, transparent);
+  border: 1px solid var(--sheet-line);
+  border-radius: var(--r-btn);
+  -moz-appearance: textfield;
+}
+.f45-row input::-webkit-outer-spin-button,
+.f45-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.f45-row input::placeholder { color: var(--text-dim); font-weight: 400; }
+.f45-row input:focus-visible { outline: 2px solid var(--headline); outline-offset: 2px; }
+.f45-row input.valid {
+  border-color: var(--headline);
+  box-shadow: inset 0 0 0 1px var(--headline);
+}
+
+.f45-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  margin-top: 1.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--sheet-line);
+}
+.f45-total .label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--headline);
+}
+.f45-total #showdata {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem);
+  letter-spacing: -0.02em;
+  color: var(--headline);
+  font-variant-numeric: tabular-nums;
+}
+.f45-total #message { flex-basis: 100%; color: var(--text-dim); }
+
+.f45-note { margin-top: 1rem; color: var(--text-dim); font-size: 0.85rem; }
+
+.f45-stat-row {
+  display: grid;
+  grid-template-columns: 1fr 3fr auto;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--sheet-line);
+}
+.f45-stat-row:first-child { border-top: 0; padding-top: 0; }
+.f45-stat-label { font-size: 0.92rem; color: var(--headline); font-weight: 500; }
+.f45-stat-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--sheet-line);
+  overflow: hidden;
+}
+.f45-stat-fill { height: 100%; background: var(--headline); border-radius: 999px; }
+.f45-stat-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  text-align: right;
+}
+@media (max-width: 620px) {
+  .f45-stat-row { grid-template-columns: 1fr; row-gap: 0.35rem; }
+  .f45-stat-value { text-align: left; }
+}
+
+.f45-rank {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-top: 1.1rem;
+  padding: 0.9rem 1.1rem;
+  background: color-mix(in srgb, var(--headline) 8%, var(--sheet));
+  border-radius: var(--r-img);
+}
+.f45-rank p { margin: 0; font-weight: 600; color: var(--headline); }
+.f45-rank .btn { flex: none; }
+
+@media (max-width: 460px) {
+  .f45-row { grid-template-columns: 1fr 5.5rem; }
+}

@@ -106,31 +106,65 @@ const calculate = () => {
     // Check if any field is empty
     if (one === "" || two === "" || three === "" || four === "" || five === "" || six === "" || seven === "" || eight === "" || nine === "" || ten === "") {
         document.querySelector("#showdata").innerHTML = "Please enter all the fields";
-    } else {
-        // Display score and message
-        document.querySelector("#showdata").innerHTML = `${totalScore.toFixed(2)} out of 1000.`;
-document.querySelector("#message").innerHTML = `${randomMessage}`;
-
-
-        // Send score data to the backend using AJAX
-        const formData = new FormData();
-        formData.append("score_one", scoreOne);
-        formData.append("score_two", scoreTwo);
-        formData.append("score_three", scoreThree);
-        formData.append("score_four", scoreFour);
-        formData.append("score_five", scoreFive);
-        formData.append("score_six", scoreSix);
-        formData.append("score_seven", scoreSeven);
-        formData.append("score_eight", scoreEight);
-        formData.append("score_nine", scoreNine);
-        formData.append("score_ten", scoreTen);
-        formData.append("score", totalScore);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'add_score.php', true);
-
-        xhr.send(formData); // Send the form data to the PHP backend
+        return;
     }
+
+    // Display score and message
+    document.querySelector("#showdata").innerHTML = `${totalScore.toFixed(2)} out of 1000.`;
+    document.querySelector("#message").innerHTML = `${randomMessage}`;
+
+    // Send score data to the backend, then show where it ranks
+    const formData = new FormData();
+    formData.append("score_one", scoreOne);
+    formData.append("score_two", scoreTwo);
+    formData.append("score_three", scoreThree);
+    formData.append("score_four", scoreFour);
+    formData.append("score_five", scoreFive);
+    formData.append("score_six", scoreSix);
+    formData.append("score_seven", scoreSeven);
+    formData.append("score_eight", scoreEight);
+    formData.append("score_nine", scoreNine);
+    formData.append("score_ten", scoreTen);
+    formData.append("score", totalScore);
+
+    fetch("add_score.php", { method: "POST", body: formData })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+            const rankBox = document.querySelector("#rankBox");
+            const rankText = document.querySelector("#rankText");
+            if (!data || !data.ok || !rankBox || !rankText) return;
+
+            rankText.textContent = `You ranked #${data.rank} of ${data.total} — top ${data.percentile}%.`;
+            rankBox.hidden = false;
+            window.__f45Share = {
+                total: totalScore,
+                rank: data.rank,
+                outOf: data.total,
+                percentile: data.percentile,
+            };
+        })
+        .catch(() => {
+            // Leaderboard/rank is a bonus — a network hiccup here shouldn't block the result already shown.
+        });
+};
+
+const shareScore = () => {
+    const s = window.__f45Share;
+    const url = "https://joshspires.com.au/projects/f45-calculator/";
+    const text = s
+        ? `I scored ${s.total.toFixed(1)}/1000 on the F45 Playoffs Score Calculator — ranked #${s.rank} of ${s.outOf} (top ${s.percentile}%). Calculate yours:`
+        : "I just calculated my F45 Playoffs score. Calculate yours:";
+
+    if (navigator.share) {
+        navigator.share({ title: "F45 Playoffs Score Calculator", text, url }).catch(() => {});
+        return;
+    }
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(`${text} ${url}`).catch(() => {});
+    }
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(tweetUrl, "_blank", "noopener");
 };
 
 const resetInputs = () => {
@@ -149,6 +183,11 @@ const resetInputs = () => {
     // Clear the output messages
     document.querySelector("#showdata").innerHTML = "";
     document.querySelector("#message").innerHTML = "";
+
+    // Hide the rank/share box until the next calculation
+    const rankBox = document.querySelector("#rankBox");
+    if (rankBox) rankBox.hidden = true;
+    window.__f45Share = null;
 
     // Remove the 'valid' class from all inputs
     const inputs = document.querySelectorAll("input");

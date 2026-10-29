@@ -1,59 +1,53 @@
 <?php
-require 'vendor/autoload.php'; // Load MongoDB library
-use MongoDB\Driver\ServerApi;
+// Load database configuration
+$config = include('db_config.php');
+$conn = new mysqli($config['host'], $config['username'], $config['password'], $config['dbname']);
 
-$uri = 'mongodb+srv://admin_dc347w:<db_password>@f45calculator.9ccmp.mongodb.net/?retryWrites=true&w=majority&appName=F45Calculator';
-
-// Set the version of the Stable API on the client
-$apiVersion = new ServerApi(ServerApi::V1);
-
-// Create a new client and connect to the server
-$client = new MongoDB\Client($uri, [], ['serverApi' => $apiVersion]);
-
-try {
-    // Confirm a successful connection
-    $client->selectDatabase('admin')->command(['ping' => 1]);
-} catch (Exception $e) {
-    die("Connection failed: " . $e->getMessage());
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 
-// Database and collection references
-$database = $client->selectDatabase('f45calculator');
-$scoresCollection = $database->selectCollection('scores');
-
-// Query to fetch the top 10 scores
-$topScoresCursor = $scoresCollection->find(
-    [],
-    [
-        'sort' => ['total_score' => -1],
-        'limit' => 10,
-    ]
-);
-
-$topScores = iterator_to_array($topScoresCursor);
-
-// Count the total number of documents in the `scores` collection
-$totalRows = $scoresCollection->countDocuments();
+// SQL query to fetch the last 10 rows
+$sql = "SELECT total_score 
+        FROM scores 
+        ORDER BY total_score DESC 
+        LIMIT 10";
+$result = $conn->query($sql);
 
 // Array of random names
 $names = ["Fluffy Puffy", "Smudgy Fudgy", "Rocky Jockey", "Princess Peach", "Big Fluff", "Budgy Smuggler", "Rocky Road", "Princess Bliss", "Fluffy Buffy", "Smudgy Nudgy"];
 
+// Query to get the total number of rows in the `scores` table
+$countQuery = "SELECT COUNT(*) as total_rows FROM scores";
+$countResult = $conn->query($countQuery);
+$totalRows = 0;
+
+if ($countResult && $countResult->num_rows > 0) {
+    $row = $countResult->fetch_assoc();
+    $totalRows = $row['total_rows'];
+}    
+// Display the total number of rows
 echo "<p>Top 10 results out of $totalRows.</p>";
 
-if (!empty($topScores)) {
+if ($result->num_rows > 0) {
     echo "<table>";
     echo "<thead>";
-    echo "<tr><th>Name</th><th>Total Score</th></tr>";
+    echo "<tr><th>Name</th><th>Total score</th></tr>";
     echo "</thead><tbody>";
 
-    foreach ($topScores as $document) {
+    $usedNames = [];
+
+    while ($row = $result->fetch_assoc()) {
         // Select a random name and remove it from the array to avoid duplication
         $randomIndex = array_rand($names);
         $name = $names[$randomIndex];
+
+        // Remove the selected name from the array
         unset($names[$randomIndex]);
 
         // Escape the output to prevent XSS
-        $total_score = htmlspecialchars($document['total_score']);
+        $total_score = htmlspecialchars(number_format((float)$row['total_score'], 1));
 
         echo "<tr>";
         echo "<td>$name</td>";
@@ -65,4 +59,6 @@ if (!empty($topScores)) {
 } else {
     echo "<p>No leaderboard data available.</p>";
 }
+
+$conn->close();
 ?>

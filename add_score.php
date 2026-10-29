@@ -1,23 +1,9 @@
 <?php
-// Load database configuration from environment variables
-$host = getenv('DB_HOST');
-$username = getenv('DB_USER');
-$password = getenv('DB_PASSWORD');
-$dbname = getenv('DB_NAME');
-$port = getenv('DB_PORT') ?: 3306; // Default to 3306 if not set
+// Load database configuration
+$config = include('db_config.php');
 
-// Enable SSL options if needed
-$sslOptions = [
-    MYSQLI_OPT_SSL_VERIFY_SERVER_CERT => true,
-    MYSQLI_INIT_COMMAND => "SET SESSION sql_mode = 'STRICT_ALL_TABLES'"
-];
-
-// Create a connection with error handling
-$conn = mysqli_init();
-mysqli_options($conn, MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, true);
-if (!$conn->real_connect($host, $username, $password, $dbname, $port)) {
-    die("Connection failed: " . $conn->connect_error);
-}
+// Create a connection
+$conn = new mysqli($config['host'], $config['username'], $config['password'], $config['dbname']);
 
 // Function to generate a random unique ID
 function generateUniqueId($conn) {
@@ -29,34 +15,41 @@ function generateUniqueId($conn) {
         $id = rand(1, 99999999999);
 
         // Check if this ID already exists in the database
-        $stmt = $conn->prepare("SELECT COUNT(*) AS count FROM scores WHERE id = ?");
-        $stmt->bind_param("d", $id);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $conn->query("SELECT COUNT(*) AS count FROM scores WHERE id = $id");
         $row = $result->fetch_assoc();
 
         if ($row['count'] == 0) {
             $unique = true;
         }
-
-        $stmt->close();
     }
 
     return $id;
 }
 
-// Get data from POST request
-$scoreOne = $_POST['score_one'];
-$scoreTwo = $_POST['score_two'];
-$scoreThree = $_POST['score_three'];
-$scoreFour = $_POST['score_four'];
-$scoreFive = $_POST['score_five'];
-$scoreSix = $_POST['score_six'];
-$scoreSeven = $_POST['score_seven'];
-$scoreEight = $_POST['score_eight'];
-$scoreNine = $_POST['score_nine'];
-$scoreTen = $_POST['score_ten'];
-$score = $_POST['score'];
+// Only accept POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    exit;
+}
+
+// Get data from POST request (cast to float)
+$scoreOne = (float)($_POST['score_one'] ?? 0);
+$scoreTwo = (float)($_POST['score_two'] ?? 0);
+$scoreThree = (float)($_POST['score_three'] ?? 0);
+$scoreFour = (float)($_POST['score_four'] ?? 0);
+$scoreFive = (float)($_POST['score_five'] ?? 0);
+$scoreSix = (float)($_POST['score_six'] ?? 0);
+$scoreSeven = (float)($_POST['score_seven'] ?? 0);
+$scoreEight = (float)($_POST['score_eight'] ?? 0);
+$scoreNine = (float)($_POST['score_nine'] ?? 0);
+$scoreTen = (float)($_POST['score_ten'] ?? 0);
+$score = (float)($_POST['score'] ?? 0);
+
+// Ignore obviously invalid submissions
+if ($score <= 0 || $score > 1000) {
+    http_response_code(422);
+    exit;
+}
 
 // Generate a unique random ID
 $uniqueId = generateUniqueId($conn);
@@ -66,12 +59,31 @@ $stmt = $conn->prepare("INSERT INTO scores (id, score_one, score_two, score_thre
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 $stmt->bind_param("dddddddddddd", $uniqueId, $scoreOne, $scoreTwo, $scoreThree, $scoreFour, $scoreFive, $scoreSix, $scoreSeven, $scoreEight, $scoreNine, $scoreTen, $score);
 
-if (!$stmt->execute()) {
-    die("Error inserting data: " . $stmt->error);
-}
-
+$stmt->execute();
 $stmt->close();
+
+// Work out where this score sits on the leaderboard: rank 1 = highest total_score.
+$total = (int) $conn->query("SELECT COUNT(*) AS total FROM scores")->fetch_assoc()['total'];
+
+$betterStmt = $conn->prepare("SELECT COUNT(*) AS better FROM scores WHERE total_score > ?");
+$betterStmt->bind_param("d", $score);
+$betterStmt->execute();
+$better = (int) $betterStmt->get_result()->fetch_assoc()['better'];
+$betterStmt->close();
+
+$rank = $better + 1;
+$percentile = $total > 0 ? (int) round((1 - ($rank - 1) / $total) * 100) : 100;
+$percentile = max(1, min(100, $percentile));
 
 // Close the connection
 $conn->close();
+
+// Tell the front end where this score ranks, so it can show it and offer to share it.
+header('Content-Type: application/json');
+echo json_encode([
+    'ok'         => true,
+    'rank'       => $rank,
+    'total'      => $total,
+    'percentile' => $percentile,
+]);
 ?>
